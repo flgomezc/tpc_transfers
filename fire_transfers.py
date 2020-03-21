@@ -1,127 +1,105 @@
+# This script is used to cook curl commands that will perform actions similar to those in a Third Part Copy transfer
+# done through FTS: request macaroon, download file, upload file, copy, get checksum, etc.
+
+# TODO:
+# * validatex509 credentials
+# * Check that extract_macaroon works when curl_debug =1
+# - automatic suffix 
+# - trigger parallel transfers
+# - verify with checksum
+# - add an arg parser
+#   -- pass x509 cert and key as arguments
+#   -- pass source and dest enpoint as arguments
+
 import sys
 import argparse
 import logging
 import time
 import subprocess
 import pdb
+import datetime
+from multiprocessing import Process, Value, Lock
+from tpc_utils import *
+
 #pdb.set_trace()
 
-def extract_macaroon(response):
-    log.debug("response: "+response)
-    macaroon = response.split('"')[3]
-    return macaroon
-
-#def macaroon_download(token, source, dest):
-#curl --verbose --connect-timeout 60 -D /tmp/tmp.i9Au4JQ9Rd -s -f -L --capath /etc/grid-security/certificates -H 'X-No-Delegate:true' --cacert p/x509up_u52618 -E /tmp/x509up_u52618 -H 'Credential: none' -m30 -T /bin/bash  -H 'Authorization: Bearer MDAxOGxvY2F0aW9uIFQyX1VTX1VDU0QKMDAzNGlkZW50aWZpZXIgMjlhN2JhZGUtZTYzMC00MTFhLWI3NjEtZjllODU5MjhmOTY0CjAwMTVjaWQgbmFtZTpkZGF2aWxhCjAwNTJjaWQgYWN0aXZpdHk6UkVBRF9NRVRBREFUQSxVUExPQUQsRE9XTkxPQUQsREVMRVRFLE1BTkFHRSxVUERBVEVfTUVUQURBVEEsTElTVAowMDJkY2lkIGFjdGl2aXR5OkRPV05MT0FELFVQTE9BRCxERUxFVEUsTElTVAowMDJiY2lkIHBhdGg6L3N0b3JlL3VzZXIvZGRhdmlsYS9oZWxsby0wMDEKMDAyNGNpZCBiZWZvcmU6MjAyMC0wMS0zMVQxNzoxMzowMVoKMDAyZnNpZ25hdHVyZSBuit4Um8XXFbKdCK2LBAZOwiqFj3JPG-XF3dLFAFriJgo' https://redirector.t2.ucsd.edu:1094//store/user/ddavila/hello-001
-
-def download_file(url, macaroon, debug=0):
-    if(debug == 1):
-        command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
-    else:
-        command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
-    command = command + ["-H", "'X-No-Delegate:true'"]
-    command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
-    command = command + ["-H", 'Authorization: Bearer '+macaroon]
-    command = command + [url]
-    out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
-    if stderr is None:
-        log.debug("file content: "+stdout)
-    else:
-       log.error("Something went wrong when executing command:\n" +str(command))
-
-def tpc(url_src, macaroon_src, url_dst, macaroon_dst, debug=0):
+def make_transfer(tpc_util, url_src, url_dst, file_src, log_lock):
     res = -1
-    if(debug == 1):
-        command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
-    else:
-        command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
-    command = command + ["-H", "'X-No-Delegate:true'"]
-    command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
-    command = command + ["-X", "COPY"]
-    command = command + ["-H", 'TransferHeaderAuthorization: Bearer '+macaroon_src]
-    command = command + ["-H", 'Source: '+url_src]
-    command = command + ["-H", 'Authorization: Bearer '+macaroon_dst]
-    command = command + [url_dst]
-    out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
-    if stderr is None:
-        log.debug("TPC OK")
-        res = 0
-    else:
-        log.error("Something went wrong when executing command:\n" +str(command))
-        res = 1
-
-    return res
-
-def request_macaroon(url, permission_list, debug=0):
-    macaroon = None
-    if(debug == 1):
-        command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
-    else:
-        command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
-    command = command + ["-H", "'X-No-Delegate:true'"]
-    command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
-    command = command + ["-X", "POST"]
-    command = command + ["-H", 'Content-Type: application/macaroon-request']
-    command = command + ["-d"]
-    command = command + ['{"caveats": ["activity:'+permission_list+'"], "validity": "PT30M"}']
-    command = command + [url]
+    log.info("File to transfer: "+url_src)
+    log.debug("TPC: "+url_src+" -> "+url_dst)
+    # Get macaroons
+    log.info(file_src +" Requesting macaroons")
+    macaroon_src = tpc_util.request_macaroon(url_src, "DOWNLOAD,DELETE,LIST")
+    macaroon_dst = tpc_util.request_macaroon(url_dst, "UPLOAD,DELETE,LIST")
     
-    out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
-    if stderr is None:
-        macaroon = extract_macaroon(stdout)
-        log.debug("macaroon: "+macaroon)
-    else:
-        log.error("Something went wrong when executing command:\n" +str(command))
-
-    return macaroon
-
+    # Start TPC
+    log.info(file_src +" starting transfer")
+    res = tpc_util.tpc(url_src, macaroon_src, url_dst, macaroon_dst)
+    log.info(file_src +" transfer done, res: "+str(res))
+   
+    # Get Checksum 
+    if(res == 0):
+        adler32_src = tpc_util.get_adler32(url_src, macaroon_src)
+        adler32_dst = tpc_util.get_adler32(url_dst, macaroon_dst)
+        log.debug("adler32_src: "+adler32_src)
+        log.debug("adler32_dst: "+adler32_dst)
+        if (adler32_src == adler32_dst):
+            log.info("adler32: "+ adler32_src + " == "+ adler32_dst)
+        else: 
+            log.error("adler32: "+ adler32_src + " != "+ adler32_dst)
+            res = 1
+    return res 
 
 def main():
     #----- Config ----------------------------------------------------------------
     curl_debug = 0
     logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(levelname)s - %(message)s', datefmt='%Y%m%d %H:%M:%S')
     # Total number of transfers
-    total_transfers = 2
+    total_transfers = 1
+    # Number of transfers to be done in parallel
+    num_parallel_transfers = 1
     # Time between transfers
     time_between_tx = 30
     # Suffix for destination file. Destination file is same as source file + suffix
-    suffix = "_20200319"
+    ts= datetime.date.today()
+    ts= datetime.datetime.now()
+    suffix = ts.strftime('_%Y%m%d-%H%M%S')
     
     #url_base_src = "https://xrootd.rcac.purdue.edu:1094/store/temp/user/ddavila/"
     #url_base_dst = "https://redirector.t2.ucsd.edu:1094//store/user/ddavila/LoadTest_purdue/"
     url_base_src = "https://xrootd.rcac.purdue.edu:1094/store/PhEDEx_LoadTest07/LoadTest07_Debug_Purdue/"
     url_base_dst = "https://redirector.t2.ucsd.edu:1094//store/user/ddavila/LoadTest_purdue/"
+    #-------------------------------------------------------------------------------
+
+    tpc_util = TPC_util(log, curl_debug)
     
     load_tests_filename = sys.argv[1]
     log.debug("Reading list of files from: "+load_tests_filename)
     fd = open(load_tests_filename)
 
-    # List of the endpoint + LoadTest files samples, e.g.
-    # davs://xrootd.rcac.purdue.edu:1094/store/PhEDEx_LoadTest07/LoadTest07_Debug_Purdue/LoadTest07_Purdue_3E
+    # List of the LoadTest files samples, e.g. "LoadTest07_Purdue_3E"
     load_test_list =  fd.readlines()
 
-    i=0
+    i = 0
+    j = 0
     while(i < total_transfers):
-        file_src = load_test_list[i][:-1]
-        file_dst = file_src + suffix
-        url_src = url_base_src + file_src
-        url_dst = url_base_dst + file_dst
-        log.info("File to transfer: "+url_src)
-        log.debug("TPC: "+url_src+" -> "+url_dst)
+        log_lock = Lock()
+        process_list = []
+        for p in range(0, num_parallel_transfers):
+            file_src = load_test_list[j][:-1]
+            file_dst = file_src + suffix
+            url_src = url_base_src + file_src
+            url_dst = url_base_dst + file_dst
+            p = Process(target=make_transfer, args=(tpc_util, url_src, url_dst, file_src, log_lock))
+            p.start()
+            process_list.append(p)
+            j = j + 1
        
-        # Get macaroons
-        log.info(file_src +" Requesting macaroons")
-        macaroon_src = request_macaroon(url_src, "DOWNLOAD,DELETE,LIST", curl_debug)
-        macaroon_dst = request_macaroon(url_dst, "UPLOAD,DELETE,LIST", curl_debug)
-        
-        # Start TPC
-        log.info(file_src +" starting transfer")
-        res = tpc(url_src, macaroon_src, url_dst, macaroon_dst, curl_debug)
-        log.info(file_src +" transfer done, res: "+str(res))
-        i = i+1
+        for p in process_list:
+            p.join()
+ 
+        #make_transfer(url_src, url_dst, file_src, log_lock, curl_debug)
+        i = i + num_parallel_transfers
         if i < total_transfers: 
             time.sleep(time_between_tx)
 

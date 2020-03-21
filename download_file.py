@@ -41,7 +41,7 @@ def download_file(url, new_filename,  macaroon, debug=0):
     else:
         command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
     command = command + ["-H", "'X-No-Delegate:true'"]
-    command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
+    command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m90"]
     command = command + ["-H", 'Authorization: Bearer '+macaroon]
     command = command + [url]
     if(new_filename is not None):
