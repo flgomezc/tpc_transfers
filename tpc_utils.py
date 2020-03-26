@@ -1,8 +1,9 @@
 import subprocess
 
 class TPC_util:
-    def __init__(self, log, debug):
+    def __init__(self, log, timeout, debug):
         self.log = log
+        self.timeout = "-m"+str(timeout)
         self.debug = debug
     
     def extract_macaroon(self, response):
@@ -17,8 +18,9 @@ class TPC_util:
             command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
         else:
             command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
+        command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
-        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
+        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'"]
         command = command + ["-X", "POST"]
         command = command + ["-H", 'Content-Type: application/macaroon-request']
         command = command + ["-d"]
@@ -41,8 +43,9 @@ class TPC_util:
             command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
         else:
             command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
+        command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
-        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m90"]
+        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'"]
         command = command + ["-H", 'Authorization: Bearer '+macaroon]
         command = command + [url]
         if(new_filename is not None):
@@ -65,9 +68,10 @@ class TPC_util:
             command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
         else:
             command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
+        command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
         command = command + ["-I", "-H", 'Want-Digest: adler32']
-        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m30"]
+        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'"]
         command = command + ["-H", 'Authorization: Bearer '+macaroon]
         command = command + [url]
         out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -95,8 +99,9 @@ class TPC_util:
             command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
         else:
             command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
+        command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
-        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'", "-m120"]
+        command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'"]
         command = command + ["-X", "COPY"]
         command = command + ["-H", 'TransferHeaderAuthorization: Bearer '+macaroon_src]
         command = command + ["-H", 'Source: '+url_src]
