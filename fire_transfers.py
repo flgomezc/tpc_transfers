@@ -69,7 +69,7 @@ def main():
     ts= datetime.datetime.now()
     suffix = ts.strftime('_%Y%m%d-%H%M%S')
     # Timeout in seconds for the various operations (curl's -m argument), e.g., tpc, download_file, get_checksum
-    timeout = 120
+    timeout = 900
     #url_base_src = "https://xrootd.rcac.purdue.edu:1094/store/PhEDEx_LoadTest07/LoadTest07_Debug_Purdue/"
     #url_base_dst = "https://redirector.t2.ucsd.edu:1094//store/user/ddavila/LoadTest_purdue/"
     url_base_src = "https://cms-n000.rcac.purdue.edu:1094/store/PhEDEx_LoadTest07/LoadTest07_Debug_Purdue/"

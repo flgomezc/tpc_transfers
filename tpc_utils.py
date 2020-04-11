@@ -47,20 +47,22 @@ class TPC_util:
         command = command + ["-H", "'X-No-Delegate:true'"]
         command = command + ["--cacert", "/tmp/x509up_u52618", "-E", "/tmp/x509up_u52618", "-H", "'Credential: none'"]
         command = command + ["-H", 'Authorization: Bearer '+macaroon]
-        command = command + [url]
+        ###command = command + [url]
         if(new_filename is not None):
             command = command + ["-o", new_filename]
             
-        self.log.debug(command) 
+        self.log.debug(str(command)) 
         out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
         if stderr is None:
+            self.log.debug("stdout:\n"+stdout)
             if(new_filename is None):
                 self.log.debug("file content: "+stdout)
             else:
                 self.log.debug("file was downladed: "+new_filename)
         else:
            self.log.error("Something went wrong when executing command:\n" +str(command))
+           self.log.debug("stdout:\n "+stdout)
     
     def get_adler32(self, url, macaroon):
         adler32 = -1
