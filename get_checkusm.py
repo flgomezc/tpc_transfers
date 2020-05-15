@@ -10,11 +10,12 @@ def main():
     
     url = sys.argv[1]
     log.info("Getting checksum for: "+url)
-    timeout=60
+    timeout=10
     #-------------------------------------------------------------------------------
 
     tpc_util = TPC_util(log, timeout, curl_debug)
-    macaroon = tpc_util.request_macaroon(url, "UPLOAD,DELETE,LIST")
+    #macaroon = tpc_util.request_macaroon(url, "UPLOAD,DELETE,LIST")
+    macaroon = tpc_util.request_macaroon(url, "READ_METADATA,UPLOAD,DOWNLOAD,DELETE,MANAGE,UPDATE_METADATA,LIST")
     adler32 = tpc_util.get_adler32(url, macaroon)
     print(adler32)
     print(type(adler32))
