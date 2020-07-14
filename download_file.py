@@ -16,10 +16,12 @@ def main():
     else:
         log.info("Showing content of: "+url)
     timeout = 120
+    proxy= "/tmp/x509up_u0"
     #-------------------------------------------------------------------------------
    
-    tpc_util = TPC_util(log, timeout, curl_debug)
-    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,DELETE,LIST")
+    tpc_util = TPC_util(log, timeout, curl_debug, proxy)
+    #macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,DELETE,LIST")
+    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,LIST")
     tpc_util.download_file(url, macaroon, new_filename)
 
 log = logging.getLogger()    
