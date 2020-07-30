@@ -20,8 +20,8 @@ def main():
     #-------------------------------------------------------------------------------
    
     tpc_util = TPC_util(log, timeout, curl_debug, proxy)
-    #macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,DELETE,LIST")
-    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,LIST")
+    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,DELETE,LIST")
+    #macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,LIST")
     tpc_util.download_file(url, macaroon, new_filename)
 
 log = logging.getLogger()    

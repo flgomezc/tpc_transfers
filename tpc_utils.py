@@ -40,6 +40,8 @@ class TPC_util:
         if out.returncode ==0:
             macaroon = self.extract_macaroon(stdout)
             self.log.debug("macaroon: "+macaroon)
+            print(self.get_command_str(command))
+
         else:
             self.log.error("Something went wrong when executing command:\n" +self.get_command_str(command))
     
@@ -70,21 +72,21 @@ class TPC_util:
         if(self.debug == 1):
             command = ["curl", "-L", "--capath", "/etc/grid-security/certificates"]
         else:
-            command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
+            command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates", "-H", "'Credential: none'"]
         command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
         if not macaroon:
-        	command = command + ["--cacert", self.proxy, "-E", self.proxy, "-H", "'Credential: none'"]
+        	command = command + ["--cacert", self.proxy, "-E", self.proxy]
 	else:
         	command = command + ["-H", 'Authorization: Bearer '+macaroon]
         command = command + [url]
         if(new_filename is not None):
             command = command + ["-o", new_filename]
-        pdb.set_trace()    
+        #pdb.set_trace()    
         self.log.debug(str(command)) 
         out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
-        if stderr is None:
+        if out.returncode == 0:
             self.log.debug("stdout:\n"+stdout)
             if(new_filename is None):
                 self.log.debug("file content: "+stdout)
@@ -102,9 +104,9 @@ class TPC_util:
             command = ["curl", "-s", "-L", "--capath", "/etc/grid-security/certificates"]
         command = command + [self.timeout]
         command = command + ["-H", "'X-No-Delegate:true'"]
-        command = command + ["-I", "-H", 'Want-Digest: adler32']
+        command = command + ["-I", "-H", 'Want-Digest: adler32', "-H", "'Credential: none'"]
         if not macaroon:
-            command = command + ["--cacert", self.proxy, "-E", self.proxy, "-H", "'Credential: none'"]
+            command = command + ["--cacert", self.proxy, "-E", self.proxy]
         else:
             command = command + ["-H", 'Authorization: Bearer '+macaroon]
         command = command + [url]
@@ -115,7 +117,7 @@ class TPC_util:
             self.log.debug("file content: "+stdout)
             adler32 = self.extract_adler32(stdout)
         else:
-           self.log.error("Something went wrong when executing command:\n" +str(command))
+           self.log.error("Something went wrong when executing command:\n" +self.get_command_str(command))
     
         return adler32
     

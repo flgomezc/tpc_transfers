@@ -2,6 +2,7 @@
 import sys
 import logging
 from tpc_utils import *
+import pdb
 
 def main():
     #----- Config ----------------------------------------------------------------
@@ -9,22 +10,20 @@ def main():
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s  %(levelname)s - %(message)s', datefmt='%Y%m%d %H:%M:%S')
     
     url = sys.argv[1]
-    log.info("Getting checksum for: "+url)
-    timeout=10
+    new_filename = None
+    if len(sys.argv) == 3:
+        new_filename = sys.argv[2]
+        log.info("Downloading: "+url+" as: "+new_filename)
+    else:
+        log.info("Showing content of: "+url)
+    timeout = 120
     proxy= "/tmp/x509up_u0"
     #-------------------------------------------------------------------------------
-
+   
     tpc_util = TPC_util(log, timeout, curl_debug, proxy)
-    #macaroon = tpc_util.request_macaroon(url, "UPLOAD,DELETE,LIST")
-    #macaroon = tpc_util.request_macaroon(url, "READ_METADATA,UPLOAD,DOWNLOAD,DELETE,MANAGE,UPDATE_METADATA,LIST")
-    macaroon = tpc_util.request_macaroon(url, "READ_METADATA,DOWNLOAD,LIST")
-    if macaroon:
-        log.debug(macaroon)
-    	adler32 = tpc_util.get_adler32(url, macaroon)
-        if adler32:
-           log.info(adler32)
-        else:
-           log.error("no checksum returned")
+    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,DELETE,LIST")
+    #pdb.set_trace()
+    print(macaroon)
 
 log = logging.getLogger()    
 if __name__ == "__main__":
