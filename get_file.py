@@ -10,16 +10,21 @@ from tpc_utils import *
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", "-v", help="Verbose", action="store_true")
+    parser.add_argument("--use_x509", help="Use only x509 and not macaroons", action="store_true")
     parser.add_argument("source", help="Source URL")
+    parser.add_argument("dest", help="Destination path")
     return parser.parse_args()
 
 
 def main():
     #---- Read arguments-------------------------------------------------------- 
     args = parse_args()
-    url = args.source
+    url             = args.source
+    use_x509        = args.use_x509
+    new_filename    = args.dest
+
     if not "https" in url:
-        print("ERROR: URL has to start with https")
+        log.error("URL has to start with https")
         sys.exit(1)
     #---------------------------------------------------------------------------
 
@@ -45,20 +50,13 @@ def main():
         timeout = 120
 
     #---------------------------------------------------------------------------
-    
-  
+   
     tpc_util = TPC_util(log, timeout, curl_debug, proxy)
-    macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,LIST")
-    if macaroon:
-        log.info("Macaroon:\n"+macaroon)
-        try:
-            n = Macaroon.deserialize(macaroon)
-            log.debug("Macaroon deserialized:\n"+n.inspect())
-        except:
-            log.debug("Cannot deserialize the macaroon")
-    else:
-        log.error("Cannot get the macaroon")
-
+    
+    macaroon = None
+    if not use_x509:
+        macaroon = tpc_util.request_macaroon(url, "DOWNLOAD,LIST")
+    tpc_util.get_file(url, macaroon, new_filename)
 
 log = logging.getLogger()    
 if __name__ == "__main__":

@@ -23,8 +23,6 @@ from tpc_utils import *
 
 #pdb.set_trace()
 
-def make_transfer(tpc_util, url_src, url_dst, file_src):
-    res = -1
 def main():
     #----- Config ----------------------------------------------------------------
     curl_debug = 1
@@ -47,8 +45,7 @@ def main():
     # Start TPC
     log.info("Starting transfer")
     res = tpc_util.tpc(url_src, macaroon_src, url_dst, macaroon_dst)
-    log.info("Ttransfer done, res: "+str(res))
-   
+
     # Get Checksum 
     if(res == 0):
         log.info("Getting checksums")
