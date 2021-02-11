@@ -10,4 +10,4 @@ RUN yum install git -y
 RUN yum install fetch-crl -y
 RUN yum install python-pip -y
 RUN pip install --upgrade pip
-RUN pip install pymacaroons
+#RUN pip install pymacaroons

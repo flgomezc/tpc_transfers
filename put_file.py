@@ -4,7 +4,6 @@ import os
 import logging
 import ConfigParser
 import argparse
-from pymacaroons import Macaroon, Verifier
 from tpc_utils import *
 
 def parse_args():
