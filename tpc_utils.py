@@ -2,11 +2,11 @@ import subprocess
 import pdb
 
 class TPC_util:
-    def __init__(self, log, timeout, debug, proxy):
+    def __init__(self, log, timeout, curl_debug, proxy):
         self.log = log
         self.proxy = proxy
         self.timeout = "-m"+str(timeout)
-        self.debug = debug
+        self.curl_debug = curl_debug
    
     def get_command_str(self, command):
         command_str = ""
@@ -15,13 +15,17 @@ class TPC_util:
         return command_str[:-1]
  
     def extract_macaroon(self, response):
+	macaroon = None
         self.log.debug("response: "+response)
-        macaroon = response.split('"')[3]
-        return macaroon
+        response_splitted = response.split('"')
+	if len(response_splitted) > 2:
+		macaroon = response_splitted[3]
+        
+	return macaroon
     
     def get_base_command(self):
         command=["curl", "-L", "--capath", "/etc/grid-security/certificates"]
-        if(self.debug == 1):
+        if(self.curl_debug == 0):
             command = command + ["-s"]
         command = command + [self.timeout]
         command = command + ["-H", 'X-No-Delegate:true', "-H", 'Credential: none']
@@ -37,7 +41,9 @@ class TPC_util:
         command = command + ["-d"]
         command = command + ['{"caveats":["activity:'+permission_list+'"], "validity": "PT30M"}']
         command = command + [url]
-        
+       
+	# Print RAW command
+	self.log.debug(self.get_command_str(command)) 
         out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
         if out.returncode ==0:
@@ -70,6 +76,33 @@ class TPC_util:
 
         return file_content
 
+
+    def put_file(self, url,  macaroon, filepath):
+        file_content = None
+        status = -1
+        command = self.get_base_command()
+        if macaroon:
+            command = command + ["-H", 'Authorization: Bearer '+macaroon]
+        else:
+            command = command + ["--cacert", self.proxy, "-E", self.proxy]
+        
+        command = command + ["-T", filepath]
+	command = command + [url]
+
+        out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = out.communicate()
+        if out.returncode == 0:
+            status = 0
+            if stdout != ":-)":
+                self.log.error("file sent failed")
+                self.log.error("stdout:\n "+stdout)
+                self.log.error("executing command:\n" +self.get_command_str(command))
+            else:
+                self.log.info("file sent")
+                self.log.debug("stdout:\n "+stdout)
+        else:
+           self.log.error("Something went wrong when executing command:\n" +self.get_command_str(command))
+           self.log.debug("stdout:\n "+stdout)
 
     def get_file(self, url,  macaroon, new_filename=None):
         file_content = None

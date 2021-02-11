@@ -9,6 +9,7 @@ from tpc_utils import *
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", "-v", help="Verbose", action="store_true")
+    parser.add_argument("--use_x509", help="Use only x509 and not macaroons", action="store_true")
     parser.add_argument("source", help="Source URL")
     return parser.parse_args()
 
@@ -45,12 +46,11 @@ def main():
 
     #---------------------------------------------------------------------------
     tpc_util = TPC_util(log, timeout, curl_debug, proxy)
-    macaroon = tpc_util.request_macaroon(url, "READ_METADATA,DOWNLOAD,LIST")
-
-    if macaroon:
-        log.debug(macaroon)
+    macaroon = None
+    if not args.use_x509:
+        macaroon = tpc_util.request_macaroon(url, "READ_METADATA,DOWNLOAD,LIST")
     else:
-        log.info("no macaroon found, using x509 instead")
+        log.info("using x509 for auth")
     
     adler32 = tpc_util.get_adler32(url, macaroon)
 
